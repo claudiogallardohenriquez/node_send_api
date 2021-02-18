@@ -52,10 +52,19 @@ exports.nuevoEnlace = async (req, res, next) => {
     }
 }
 
-//Obtener el enlace
-exports.obtenerEnlace = async (req, res, next) => {
+// Obtiene un listado de todos los enlaces
+exports.obtenerEnlaces = async (req, res) => {
+    try {
+        const enlaces = await Enlaces.find({}).select('url -_id');
+        res.json( {enlaces} )
+    } catch (error) {
+        console.log(error);
+    }
+}
 
-    const url = req.params.url;
+// Retorna si el enlace tiene enlace a o no
+exports.tienePassword = async (req, res, next) => {
+    const { url } = req.params;
 
     //Verificar si existe el enlace
     const enlace = await Enlaces.findOne({ url });
@@ -65,25 +74,44 @@ exports.obtenerEnlace = async (req, res, next) => {
         return next();
     }
 
-    res.json({ archivo: enlace.nombre });
-
-    // Si las descargas son igual a 1 , borrar laentrada y borrar el archivo
-    const { descargas, nombre } = enlace;
-    if(descargas === 1){
-
-        //eliminar el enlace
-        req.archivo = nombre;
-
-        //eliminar la entrada de la bd
-        await Enlaces.findOneAndRemove(req.params.url);
-
-         //eliminar el archivo, se va al controller de archivo
-        next();
-    } else {
-        // Si las descragas son mayor a 1, restar 1 descarga
-        enlace.descargas--;
-        await enlace.save();
+    if(enlace.password) {
+        return res.json( { password: true, enlace: enlace.url} );
     }
 
-    
+    next();
+}
+
+//Obtener el enlace
+exports.obtenerEnlace = async (req, res, next) => {
+
+    const { url } = req.params;
+
+    //Verificar si existe el enlace
+    const enlace = await Enlaces.findOne({ url });
+
+    if(!enlace){
+        res.status(404).json({msg: 'Ese enlace no existe'});
+        return next();
+    }
+
+    res.json({ archivo: enlace.nombre, password: false });
+
+    next();
+}
+
+exports.verificarPassword = async (req, res, next) => {
+
+    const { url } = req.params;
+    const { password } = req.body;
+
+    //Consultar por el enlace
+    const enlace = await Enlaces.findOne({ url });
+
+    // Verificar el password
+    if(bcrypt.compareSync(password, enlace.password)) {
+        //permitirle descargar el archivo al usuario
+        next();
+    } else {
+        return res.status(401).json({msg: 'Password incorrecto'});
+    }            
 }

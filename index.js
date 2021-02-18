@@ -14,6 +14,9 @@ const port = process.env.PORT || 4000;
 //habilitar leer los valores de un body
 app.use(express.json());
 
+// habilitar carpeta publica
+app.use( express.static('uploads')) ;
+
 //habilitar cors
 console.log(process.env.FRONTEND_URL);
 const opcionesCors = {
